@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sudoku - MUSEO DEPARTAMENTAL DE CIENCIAS NATURALES | Juego educativo</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --fg: #ffffff;
+      --muted: #aaaaaa;
+      --accent: #2dd4bf;
+      --primary: #4a6fa5;
+      --secondary: #ff9e4f;
+      --btn-glow: rgba(74, 111, 165, 0.5);
+      --btn-secondary-glow: rgba(255, 158, 79, 0.5);
+      --block-border: 3px solid var(--primary);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      height: 100%;
+      font-family: 'Comic Neue', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    header {
+      text-align: center;
+      padding: 20px 0;
+      var(--primary), var(--secondary));
+      color: white;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3), 0 0 20px var(--btn-glow);
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+    
+    .game-area {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    /* Board - Tamaño fijo */
+    .board-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+      overflow-x: auto;
+      padding: 10px;
+      width: 100%;
+    }
+    
+    /* Tablero principal */
+    .board {
+      display: grid;
+      background: #1e1e1e;
+      border-radius: 8px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3), 0 0 20px var(--btn-glow);
+    }
+    
+    /* Celdas SIEMPRE de 100px */
+    .cell {
+      width: 100px;
+      height: 100px;
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    
+    /* Imágenes SIEMPRE de 70px */
+    .cell img {
+      width: 70px !important;
+      height: 70px !important;
+      object-fit: cover;
+      border-radius: 6px;
+    }
+    
+    /* Bordes gruesos para bloques 3x3 */
+    .cell.block-border-right {
+      border-right: var(--block-border);
+    }
+    .cell.block-border-bottom {
+      border-bottom: var(--block-border);
+    }
+    
+    .cell.empty {
+      background: #2a2a2a;
+    }
+    .cell.prefilled {
+      opacity: 0.95;
+      background: #1a2a3a;
+    }
+    .cell.selected {
+      outline: 3px solid rgba(74, 111, 165, 0.5);
+      background: #1a3a5a;
+      box-shadow: inset 0 0 10px var(--btn-glow);
+    }
+    .cell.conflict {
+      box-shadow: inset 0 0 0 3px rgba(255,0,0,0.3);
+      animation: shake 0.25s 2;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0) }
+      25% { transform: translateX(-6px) }
+      75% { transform: translateX(6px) }
+      100% { transform: translateX(0) }
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      padding: 20px;
+      border-radius: 10px;
+      background: #1e1e1e;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .palette {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px;
+      border-radius: 8px;
+      background: #252525;
+      border: 1px solid rgba(255,255,255,0.1);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3), 0 0 15px var(--btn-glow);
+    }
+    .btn.selected {
+      outline: 3px solid rgba(74, 111, 165, 0.5);
+      background: #1a3a5a;
+      box-shadow: 0 0 15px var(--btn-glow);
+    }
+    .thumb {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #2a2a2a;
+      border: 1px solid rgba(255,255,255,0.1);
+      overflow: hidden;
+    }
+    .thumb img {
+      width: 90%;
+      height: 90%;
+      object-fit: contain;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .control-btn {
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+      flex: 1;
+      min-width: 120px;
+    }
+    .control-btn:hover {
+      background: #3a5a8f;
+      transform: translateY(-2px);
+      box-shadow: 0 0 15px var(--btn-glow);
+    }
+    .control-btn.secondary {
+      background: var(--secondary);
+    }
+    .control-btn.secondary:hover {
+      background: #e68e3f;
+      box-shadow: 0 0 15px var(--btn-secondary-glow);
+    }
+    
+    .game-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+      background: #1e1e1e;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 16px;
+    }
+    .info-value {
+      font-weight: bold;
+      color: var(--accent);
+    }
+    
+    .level-indicator {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .level-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--accent);
+      margin-bottom: 5px;
+    }
+    .score-board {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .score-title {
+      font-size: 16px;
+      margin-bottom: 10px;
+      color: var(--accent);
+      text-align: center;
+    }
+    .score-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .score-item {
+      display: flex;
+      justify-content: space-between;
+    }
+    .total-score {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      font-weight: bold;
+    }
+    
+    /* Modal */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: #1e1e1e;
+      padding: 25px;
+      border-radius: 12px;
+      border: none;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5), 0 0 30px var(--btn-glow);
+    }
+    .modal h2 {
+      margin: 0 0 15px 0;
+      color: var(--accent);
+      font-size: 24px;
+    }
+    .modal p {
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    .modal .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: center;
+    }
+    .modal-img {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 15px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid var(--secondary);
+      box-shadow: 0 0 15px var(--btn-secondary-glow);
+    }
+    .modal-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    /* Celebration animation */
+    @keyframes confetti {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(500px) rotate(360deg); opacity: 0; }
+    }
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: var(--secondary);
+      opacity: 0;
+      z-index: 1001;
+      animation: confetti 2s ease-out forwards;
+    }
+    
+    /* Responsive */
+    @media (min-width: 768px) {
+      .game-area {
+        flex-direction: row;
+        align-items: flex-start;
+      }
+      .board-wrap {
+        flex: 1;
+      }
+      .sidebar {
+        width: 320px;
+        position: sticky;
+        top: 20px;
+      }
+    }
+    @media (max-width: 560px) {
+      .cell {
+        width: 80px;
+        height: 80px;
+      }
+      .cell img {
+        width: 60px !important;
+        height: 60px !important;
+      }
+      .palette {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .thumb {
+        width: 46px;
+        height: 46px;
+      }
+      .control-btn {
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+    }
+    
+    footer.site-foot {
+      background-color: #000000;
+      padding: 30px 20px;
+      font-family: 'Arial', sans-serif;
+      color: #f1f1f1;
+      text-align: center;
+      margin-top: 40px;
+      border-top: 3px solid var(--secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    footer.site-foot h3 {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: white;
+    }
+    footer.site-foot p {
+      max-width: 750px;
+      margin: 0 auto 15px;
+    }
+    footer .logos {
+      margin-top: 15px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    footer a {
+      color: var(--secondary);
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+      text-shadow: 0 0 5px var(--btn-secondary-glow);
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Sudoku - MUSEO DEPARTAMENTAL DE CIENCIAS NATURALES</h1>
+      <div class="subtitle">¡Aprende sobre ciencia y naturaleza mientras juegas!</div>
+    </header>
+
+    <div class="game-area">
+      <div class="board-wrap">
+        <div class="game-info">
+          <div class="info-item">
+            <span>Nivel:</span>
+            <span class="info-value" id="currentLevel">1</span>/<span id="totalLevels">3</span>
+          </div>
+          <div class="info-item">
+            <span>Tiempo:</span>
+            <span class="info-value" id="timer">00:00</span>
+          </div>
+          <div class="info-item">
+            <span>Puntos:</span>
+            <span class="info-value" id="currentScore">0</span>
+          </div>
+        </div>
+        
+        <div class="level-indicator">
+          <div class="level-name" id="levelName">Principiante</div>
+        </div>
+        
+        <div id="board" class="board" role="grid" aria-label="Tablero Sudoku"></div>
+        
+        <div class="controls">
+          <button class="control-btn" id="newBtn">Nuevo</button>
+          <button class="control-btn" id="restartBtn">Reiniciar</button>
+          <button class="control-btn secondary" id="checkBtn">Comprobar</button>
+          <button class="control-btn secondary" id="solveBtn">Resolver</button>
+        </div>
+      </div>
+
+      <aside class="sidebar">
+        <strong>Selecciona una imagen:</strong>
+        <div class="palette" id="palette"></div>
+        
+        <div class="score-board">
+          <div class="score-title">Puntuación por Nivel</div>
+          <div class="score-list" id="scoreList">
+            <!-- Se llena dinámicamente -->
+          </div>
+          <div class="total-score">
+            Total: <span id="totalScore">0</span> pts
+          </div>
+        </div>
+        
+        <div style="margin-top:20px; padding:12px; background:#252525; border-radius:8px;">
+          <h3 style="font-size:16px; margin-bottom:8px; color:var(--accent);">¿Cómo jugar?</h3>
+          <p style="font-size:14px; color:var(--muted);">
+            1. Haz clic en una imagen de la paleta<br>
+            2. Haz clic en una celda vacía para colocarla<br>
+            3. Cada fila, columna y cuadro 3x3 debe tener imágenes únicas<br>
+            4. Completa todo el tablero para avanzar al siguiente nivel
+          </p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer class="site-foot">
+      <h3>
+        © 2023 – 2025 | Explorando Museos y Arte Latinoamericano
+      </h3>
+
+      <p>
+        Proyecto educativo y cultural creado por <strong>Yobana Orozco Benavides</strong>. Iniciado en 2023 como <em>Explorando Museos Nacionales de Colombia</em> y transformado en 2025 en <strong>Explorando Museos y Arte Latinoamericano</strong>, una plataforma de difusión artística, pedagógica y cultural para toda Latinoamérica.
+      </p>
+
+      <div style="margin-top: 15px;">
+        <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.es" target="_blank" rel="noopener noreferrer">
+          <img src="https://licensebuttons.net/l/by-nc/4.0/88x31.png" alt="Licencia Creative Commons BY-NC 4.0" style="vertical-align: middle;">
+        </a>
+        <p style="margin: 5px 0 0; font-size: 12px;">
+          Esta obra está bajo una <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.es" target="_blank">licencia Creative Commons Atribución-NoComercial 4.0 Internacional (CC BY-NC 4.0)</a>.
+        </p>
+      </div>
+
+      <p style="margin-top: 15px;">
+        🌐 Bio autora: 
+        <a href="https://yobanaorozcoartista.bio.link/" target="_blank" rel="noopener">yobanaorozcoartista.bio.link</a>
+      </p>
+
+      <div style="margin-top: 15px; font-size: 13px;">
+        <strong>Depósito Digital Legal:</strong> DD-034370 — Registrado en la Biblioteca Nacional de Colombia
+      </div>
+
+      <div class="logos">
+        <a href="https://www.ncbi.nlm.nih.gov/myncbi/yobana.orozco%20benavides.1/bibliography/public/" target="_blank">
+          <img src="https://i.postimg.cc/ZKWXhNwT/descarga-1.png" alt="Bibliografía de Yobana Orozco Benavides" style="height: 50px; border: none;" />
+        </a>
+        <img src="https://i.postimg.cc/Vvf1RNwJ/descarga.png" alt="Imagen decorativa" style="height: 50px; border: none;" />
+        <a href="https://orcid.org/0009-0002-9253-6429" target="_blank">
+          <img src="https://i.postimg.cc/0ywg7SSt/descarga-3.jpg" alt="Perfil ORCID" style="height: 50px; border: none;" />
+        </a>
+        <img src="https://i.postimg.cc/BnqYn1gL/doi-1.png" alt="DOI" style="height: 50px; border: none;" />
+        <a href="https://www.openaire.eu/" target="_blank">
+          <img src="https://i.postimg.cc/5tkb3J0g/images.png" alt="OpenAIRE Plus Logo" style="height: 50px;" />
+        </a>
+      </div>
+    </footer>
+
+    <!-- Modal / Felicitación -->
+    <div id="overlay" class="overlay" role="dialog" aria-hidden="true">
+      <div class="modal">
+        <div class="modal-img">
+          <img src="https://i.postimg.cc/kXPLnfQG/MUSEO-DEPAR-TAMEN-TAL-DE-CIENCIAS-NATURALES-1.jpg" alt="Museo de Ciencias Naturales">
+        </div>
+        <h2 id="modalTitle">¡Felicidades!</h2>
+        <p id="modalMessage">Has completado este nivel.</p>
+        <div class="actions">
+          <button class="control-btn" id="modalNext">Siguiente nivel</button>
+          <button class="control-btn secondary" id="modalClose">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Imágenes del museo de ciencias naturales
+    const images = [
+      'https://i.postimg.cc/kXPLnfQG/MUSEO-DEPAR-TAMEN-TAL-DE-CIENCIAS-NATURALES-1.jpg',
+      'https://i.postimg.cc/xjX9kxNP/Whats-App-Image-2025-08-10-at-9-39-29-AM-1.jpg',
+      'https://i.postimg.cc/NF3JLf9Z/Whats-App-Image-2025-08-10-at-9-28-55-AM-1.jpg',
+      'https://i.postimg.cc/KYc2mJyB/Whats-App-Image-2025-08-10-at-6-22-07-AM-2-Pica.png',
+      'https://i.postimg.cc/SR21yzsW-/Whats-App-Image-2025-08-10-at-6-20-18-AM-3.jpg',
+      'https://i.postimg.cc/W48HSvCJ/Whats-App-Image-2025-08-10-at-6-20-17-AM-3.jpg',
+      'https://i.postimg.cc/xTNBQBJW/Whats-App-Image-2025-08-09-at-8-26-10-PM-1.jpg',
+      'https://i.postimg.cc/nrg57G5R/Whats-App-Image-2025-08-09-at-8-26-08-PM-5.jpg',
+      'https://i.postimg.cc/K8Xw8Qt4/Whats-App-Image-2025-08-09-at-8-26-07-PM-6.jpg'
+    ];
+
+    // Niveles progresivos (3x3, 6x6, 9x9)
+    const LEVELS = [
+      {
+        id: 0,
+        name: 'Principiante',
+        description: '¡Empieza tu aventura científica con este sencillo Sudoku 3x3!',
+        difficulty: 1,
+        size: 3,
+        puzzle: [
+          0,0,3,
+          0,1,0,
+          2,0,0
+        ],
+        baseScore: 100,
+        timeBonus: 300
+      },
+      {
+        id: 1,
+        name: 'Explorador',
+        description: '¡Ahora un Sudoku 6x6 con más desafíos!',
+        difficulty: 2,
+        size: 6,
+        puzzle: [
+          0,0,0,0,0,0,
+          0,1,0,0,2,0,
+          0,0,3,4,0,0,
+          0,0,5,6,0,0,
+          0,4,0,0,1,0,
+          0,0,0,0,0,0
+        ],
+        baseScore: 200,
+        timeBonus: 300
+      },
+      {
+        id: 2,
+        name: 'Aprendiz',
+        description: '¡Sudoku 9x9 para verdaderos científicos!',
+        difficulty: 3,
+        size: 9,
+        puzzle: [
+          0,0,5,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,
+          0,0,0,0,5,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0
+        ],
+        baseScore: 300,
+        timeBonus: 300
+      }
+    ];
+
+    // Variables del juego
+    let currentLevel = 0;
+    let starter = [];
+    let cells = [];
+    let selectedPalette = null;
+    let timer = null;
+    let seconds = 0;
+    let levelScores = Array(LEVELS.length).fill(0);
+    let totalScore = 0;
+    let gameActive = false;
+
+    // Inicializar el juego
+    function initGame() {
+      buildPalette();
+      setLevel(0);
+      updateScoreBoard();
+      document.getElementById('totalLevels').textContent = LEVELS.length;
+      
+      // Event listeners para los botones
+      document.getElementById('newBtn').addEventListener('click', newGame);
+      document.getElementById('restartBtn').addEventListener('click', restartLevel);
+      document.getElementById('checkBtn').addEventListener('click', checkBoard);
+      document.getElementById('solveBtn').addEventListener('click', solvePuzzle);
+      
+      // Event listeners para el modal
+      document.getElementById('modalNext').addEventListener('click', nextLevel);
+      document.getElementById('modalClose').addEventListener('click', closeModal);
+    }
+
+    // Nuevo juego
+    function newGame() {
+      if (confirm('¿Quieres comenzar un nuevo juego? Se reiniciará tu progreso.')) {
+        levelScores = Array(LEVELS.length).fill(0);
+        totalScore = 0;
+        currentLevel = 0;
+        setLevel(0);
+        updateScoreBoard();
+      }
+    }
+
+    // Establecer el nivel actual
+    function setLevel(idx) {
+      currentLevel = idx;
+      const level = LEVELS[idx];
+      starter = level.puzzle.slice();
+      buildBoard(level.size);
+      resetTimer();
+      startTimer();
+      updateUI();
+      gameActive = true;
+      
+      // Actualizar información del nivel
+      document.getElementById('currentLevel').textContent = currentLevel + 1;
+      document.getElementById('levelName').textContent = level.name;
+    }
+
+    // Construir el tablero según el tamaño
+    function buildBoard(size) {
+      const boardEl = document.getElementById('board');
+      boardEl.innerHTML = '';
+      boardEl.className = 'board board-' + size + 'x' + size;
+      boardEl.style.gridTemplateColumns = `repeat(${size}, 100px)`;
+      boardEl.style.gridTemplateRows = `repeat(${size}, 100px)`;
+      cells = [];
+      
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const idx = r * size + c;
+          const val = starter[idx] || 0;
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          
+          // Añadir bordes para bloques 3x3
+          const blockSize = 3; // Siempre bloques de 3x3
+          if ((c + 1) % blockSize === 0 && c !== size - 1) {
+            cell.classList.add('block-border-right');
+          }
+          if ((r + 1) % blockSize === 0 && r !== size - 1) {
+            cell.classList.add('block-border-bottom');
+          }
+          
+          if (val === 0) cell.classList.add('empty');
+          cell.dataset.idx = idx;
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+
+          if (val !== 0) {
+            const img = document.createElement('img');
+            img.src = images[(val - 1) % images.length];
+            cell.appendChild(img);
+            cell.classList.add('prefilled');
+            cell.dataset.value = val;
+          } else {
+            cell.dataset.value = 0;
+          }
+
+          cell.addEventListener('click', () => placeImage(cell));
+          boardEl.appendChild(cell);
+          cells.push(cell);
+        }
+      }
+    }
+
+    // Construir la paleta de imágenes
+    function buildPalette() {
+      const paletteEl = document.getElementById('palette');
+      paletteEl.innerHTML = '';
+      
+      for (let i = 0; i < 9; i++) {
+        const btn = document.createElement('div');
+        btn.className = 'btn';
+        btn.dataset.val = i + 1;
+        btn.innerHTML = `
+          <div class='thumb'>
+            <img src='${images[i]}'/>
+          </div>
+          <div style='font-size:12px;color:var(--muted)'>#${i + 1}</div>
+        `;
+        btn.addEventListener('click', () => {
+          // Deseleccionar cualquier botón previamente seleccionado
+          if (selectedPalette) {
+            selectedPalette.classList.remove('selected');
+          }
+          
+          // Seleccionar el nuevo botón
+          selectedPalette = btn;
+          btn.classList.add('selected');
+        });
+        paletteEl.appendChild(btn);
+      }
+    }
+
+    // Colocar imagen en celda
+    function placeImage(cell) {
+      if (!selectedPalette) {
+        alert('Primero selecciona una imagen de la paleta');
+        return;
+      }
+      
+      if (cell.classList.contains('prefilled')) {
+        alert('No puedes modificar las celdas prefijadas');
+        return;
+      }
+      
+      const val = selectedPalette.dataset.val;
+      cell.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = images[(val - 1) % images.length];
+      cell.appendChild(img);
+      cell.dataset.value = val;
+      cell.classList.remove('empty');
+      
+      // Verificar si se completó el tablero automáticamente
+      checkAutoComplete();
+    }
+
+    // Reiniciar nivel
+    function restartLevel() {
+      if (confirm('¿Quieres reiniciar este nivel? Perderás tu progreso actual.')) {
+        setLevel(currentLevel);
+      }
+    }
+
+    // Comprobar tablero
+    function checkBoard() {
+      if (!gameActive) return;
+      
+      const size = LEVELS[currentLevel].size;
+      const vals = cells.map(c => Number(c.dataset.value || 0));
+      clearConflicts();
+      const conflicts = findConflicts(vals, size);
+      
+      if (conflicts.length === 0) {
+        if (vals.every(v => v !== 0)) {
+          levelComplete();
+        } else {
+          alert('¡Sin conflictos detectados! Sigue completando el tablero.');
+        }
+      } else {
+        conflicts.forEach(i => cells[i].classList.add('conflict'));
+        alert('Conflictos detectados. Revisa las celdas marcadas en rojo.');
+      }
+    }
+
+    // Resolver puzzle (versión simplificada)
+    function solvePuzzle() {
+      if (!gameActive) return;
+      if (!confirm('¿Quieres ver la solución completa?')) return;
+      
+      const size = LEVELS[currentLevel].size;
+      const blockSize = Math.sqrt(size);
+      
+      // Generar una solución válida para el tamaño actual
+      const solution = generateSolution(size);
+      
+      // Mostrar la solución
+      cells.forEach((cell, idx) => {
+        if (cell.dataset.value === '0') {
+          const val = solution[idx];
+          cell.innerHTML = '';
+          const img = document.createElement('img');
+          img.src = images[(val - 1) % images.length];
+          cell.appendChild(img);
+          cell.dataset.value = val;
+          cell.classList.remove('empty');
+          cell.classList.add('prefilled');
+        }
+      });
+      
+      // Después de 2 segundos, mostrar que está completo
+      setTimeout(() => {
+        levelComplete();
+      }, 2000);
+    }
+
+    // Generar una solución válida para el Sudoku
+    function generateSolution(size) {
+      const blockSize = Math.sqrt(size);
+      const grid = Array(size * size).fill(0);
+      
+      // Llenar la diagonal de bloques primero
+      for (let block = 0; block < size; block += blockSize) {
+        fillBlock(block, block, grid, size);
+      }
+      
+      // Resolver el resto del Sudoku
+      solveSudoku(grid, 0, 0, size);
+      
+      return grid;
+    }
+    
+    function fillBlock(row, col, grid, size) {
+      const blockSize = Math.sqrt(size);
+      const nums = shuffleArray([...Array(size)].map((_, i) => i + 1));
+      
+      let index = 0;
+      for (let i = 0; i < blockSize; i++) {
+        for (let j = 0; j < blockSize; j++) {
+          grid[(row + i) * size + (col + j)] = nums[index++];
+        }
+      }
+    }
+    
+    function solveSudoku(grid, row, col, size) {
+      if (row === size - 1 && col === size) return true;
+      if (col === size) { row++; col = 0; }
+      if (grid[row * size + col] !== 0) return solveSudoku(grid, row, col + 1, size);
+      
+      for (let num = 1; num <= size; num++) {
+        if (isSafe(grid, row, col, num, size)) {
+          grid[row * size + col] = num;
+          if (solveSudoku(grid, row, col + 1, size)) return true;
+          grid[row * size + col] = 0;
+        }
+      }
+      return false;
+    }
+    
+    function isSafe(grid, row, col, num, size) {
+      const blockSize = Math.sqrt(size);
+      
+      // Verificar fila
+      for (let c = 0; c < size; c++) {
+        if (grid[row * size + c] === num) return false;
+      }
+      
+      // Verificar columna
+      for (let r = 0; r < size; r++) {
+        if (grid[r * size + col] === num) return false;
+      }
+      
+      // Verificar bloque 3x3 (siempre)
+      const blockRow = Math.floor(row / 3) * 3;
+      const blockCol = Math.floor(col / 3) * 3;
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          if (grid[(blockRow + r) * size + (blockCol + c)] === num) return false;
+        }
+      }
+      
+      return true;
+    }
+    
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    // Detectar conflictos
+    function findConflicts(vals, size) {
+      const conf = new Set();
+      
+      // Verificar filas
+      for (let r = 0; r < size; r++) {
+        const seen = {};
+        for (let c = 0; c < size; c++) {
+          const i = r * size + c;
+          const v = vals[i];
+          if (v === 0) continue;
+          if (seen[v]) {
+            conf.add(i);
+            conf.add(seen[v] - 1);
+          } else {
+            seen[v] = i + 1;
+          }
+        }
+      }
+      
+      // Verificar columnas
+      for (let c = 0; c < size; c++) {
+        const seen = {};
+        for (let r = 0; r < size; r++) {
+          const i = r * size + c;
+          const v = vals[i];
+          if (v === 0) continue;
+          if (seen[v]) {
+            conf.add(i);
+            conf.add(seen[v] - 1);
+          } else {
+            seen[v] = i + 1;
+          }
+        }
+      }
+      
+      // Verificar bloques 3x3 (siempre)
+      for (let br = 0; br < size; br += 3) {
+        for (let bc = 0; bc < size; bc += 3) {
+          const seen = {};
+          for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+              const R = br + r;
+              const C = bc + c;
+              if (R >= size || C >= size) continue; // Para niveles no divisibles por 3
+              const i = R * size + C;
+              const v = vals[i];
+              if (v === 0) continue;
+              if (seen[v]) {
+                conf.add(i);
+                conf.add(seen[v] - 1);
+              } else {
+                seen[v] = i + 1;
+              }
+            }
+          }
+        }
+      }
+      
+      return Array.from(conf);
+    }
+
+    // Limpiar conflictos
+    function clearConflicts() {
+      cells.forEach(c => c.classList.remove('conflict'));
+    }
+
+    // Verificar si se completó automáticamente
+    function checkAutoComplete() {
+      if (!gameActive) return;
+      
+      const size = LEVELS[currentLevel].size;
+      const vals = cells.map(c => Number(c.dataset.value || 0));
+      if (vals.every(v => v !== 0)) {
+        const conflicts = findConflicts(vals, size);
+        if (conflicts.length === 0) {
+          levelComplete();
+        } else {
+          conflicts.forEach(i => cells[i].classList.add('conflict'));
+        }
+      }
+    }
+
+    // Nivel completado
+    function levelComplete() {
+      gameActive = false;
+      stopTimer();
+      
+      // Calcular puntaje
+      const levelData = LEVELS[currentLevel];
+      const timeBonus = Math.max(0, Math.round((levelData.timeBonus - seconds) / 6));
+      const earned = levelData.baseScore + timeBonus;
+      levelScores[currentLevel] = earned;
+      totalScore = levelScores.reduce((a, b) => a + b, 0);
+      
+      // Mostrar modal de felicitación
+      document.getElementById('modalTitle').textContent = `¡Nivel ${currentLevel + 1} completado!`;
+      document.getElementById('modalMessage').textContent = 
+        `${levelData.description}\n\n` +
+        `Obtuviste ${earned} puntos (base ${levelData.baseScore} + bono tiempo ${timeBonus}).\n` +
+        `Puntaje total: ${totalScore}`;
+      
+      // Mostrar confeti
+      createConfetti();
+      
+      // Mostrar modal
+      document.getElementById('overlay').style.display = 'flex';
+      document.getElementById('overlay').setAttribute('aria-hidden', 'false');
+      
+      // Actualizar UI
+      updateUI();
+      updateScoreBoard();
+    }
+
+    // Siguiente nivel
+    function nextLevel() {
+      closeModal();
+      if (currentLevel < LEVELS.length - 1) {
+        setLevel(currentLevel + 1);
+      } else {
+        alert('¡Felicidades! Has completado todos los niveles.');
+      }
+    }
+
+    // Cerrar modal
+    function closeModal() {
+      document.getElementById('overlay').style.display = 'none';
+    }
+
+    // Temporizador
+    function startTimer() {
+      stopTimer();
+      seconds = 0;
+      updateTimerDisplay();
+      timer = setInterval(() => {
+        seconds++;
+        updateTimerDisplay();
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    function resetTimer() {
+      stopTimer();
+      seconds = 0;
+      updateTimerDisplay();
+    }
+
+    function updateTimerDisplay() {
+      const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const ss = String(seconds % 60).padStart(2, '0');
+      document.getElementById('timer').textContent = `${mm}:${ss}`;
+    }
+
+    // Actualizar UI
+    function updateUI() {
+      document.getElementById('currentLevel').textContent = currentLevel + 1;
+      document.getElementById('currentScore').textContent = levelScores[currentLevel] || '0';
+    }
+
+    // Actualizar tabla de puntuación
+    function updateScoreBoard() {
+      const scoreListEl = document.getElementById('scoreList');
+      scoreListEl.innerHTML = '';
+      
+      LEVELS.forEach((level, idx) => {
+        const scoreItem = document.createElement('div');
+        scoreItem.className = 'score-item';
+        scoreItem.innerHTML = `
+          <span>Nivel ${idx + 1}:</span>
+          <span>${levelScores[idx] || '0'} pts</span>
+        `;
+        scoreListEl.appendChild(scoreItem);
+      });
+      
+      document.getElementById('totalScore').textContent = totalScore;
+    }
+
+    // Efecto de confeti
+    function createConfetti() {
+      const colors = ['#4a6fa5', '#ff9e4f', '#2dd4bf', '#ff6b6b', '#94d82d'];
+      
+      for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = `${Math.random() * 100}vw`;
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.width = `${Math.random() * 10 + 5}px`;
+        confetti.style.height = `${Math.random() * 10 + 5}px`;
+        confetti.style.animationDelay = `${Math.random() * 2}s`;
+        document.body.appendChild(confetti);
+        
+        // Eliminar después de la animación
+        setTimeout(() => {
+          confetti.remove();
+        }, 2000);
+      }
+    }
+
+    // Iniciar el juego cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', initGame);
+  </script>
+</body>
+</html>
